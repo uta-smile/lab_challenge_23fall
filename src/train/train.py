@@ -86,8 +86,8 @@ def train(conf: Conf) -> None:
 
 def predict(conf: Conf) -> None:
   """Predict."""
-  data = read_images(conf.data.base / "mnseg")
-  loader = Loader(data, conf)
+  data = read_images(conf.data.base / "mnseg_test")
+  loader = Loader(data, conf, batch_size=1)
   model = build_model()
   rngs = hk.PRNGSequence(42)
   with open("chks/72.pkl", "rb") as f:
@@ -98,7 +98,7 @@ def predict(conf: Conf) -> None:
   ys = []
   ys_true = []
   dices = []
-  for x, y in tqdm(Loader(data, conf)):
+  for x, y in tqdm(loader):
     y_, _ = apply(params, states, next(rngs), x)
     y_ = jnp.where(jax.nn.sigmoid(y_.squeeze()) > 0.5, 1, 0)
     ys.append(y_)

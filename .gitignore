@@ -1,4 +1,5 @@
 pdm.lock
+ignore/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -273,3 +274,4 @@ Temporary Items
 /x.csv
 /ys.csv
 /ys_true.csv
+/data/*.zip

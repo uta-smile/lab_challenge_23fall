@@ -35,7 +35,7 @@ license  : GPL-3.0+
 Utils
 """
 from pathlib import Path
-
+from tqdm import tqdm
 import jax
 
 
@@ -46,7 +46,7 @@ def rle(arr: jax.Array) -> str:
   run_length = 0
   start_pixel = 0
   rles = []
-  for i, elem in enumerate(arr1d):
+  for i, elem in enumerate(tqdm(arr1d)):
     if elem not in (0, 1):
       raise ValueError("Only 0 and 1 are supported.")
     if elem:
