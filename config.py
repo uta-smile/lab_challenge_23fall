@@ -36,10 +36,13 @@ SMILE LAB Tranining Project
 """
 
 from dataclasses import dataclass, field
-from typing import Any
-import tyro
 from pathlib import Path
+
+from typing import Any
+
 from rich import console
+
+import tyro
 
 
 @dataclass
@@ -64,7 +67,7 @@ class Conf:
   data: Data = field(default_factory=Data)
   params: Params = field(default_factory=Params)
   seed: int = 7
-  epoch: int = 200
+  epoch: int = 191
 
   train: bool = True
   infer: bool = True

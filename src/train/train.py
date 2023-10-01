@@ -113,6 +113,7 @@ def rng_gen(rngs: jax.Array) -> Iterator[jax.Array]:
 
 def train(conf: Conf) -> None:
   """Train model."""
+  # Build model
   conf.log("Building model...")
   model = UNet(64)
   rngs = rng_gen(jax.random.key(conf.seed))
@@ -125,6 +126,7 @@ def train(conf: Conf) -> None:
       )
   )
 
+  # Init model
   conf.log("Building data and init params...")
   state = create_train_state(next(rngs), model, (1000, 1000, 3), asdict(conf.params))
   data = build(conf)
@@ -135,14 +137,20 @@ def train(conf: Conf) -> None:
   for e in range(conf.epoch):
     losses = []
     for tri in tqdm(data.tr):
+      # Get image embeddings
       im, mask = data.tr_embed.embed(tri)
+
+      # forward and backward and get new params and states
       state = loss_fn(state, im, mask, next(rngs), train=True)
       losses.append(state.loss)
+
     ave_loss = jnp.asarray(losses).mean()
     conf.log(f"Epoch {e}, Loss {ave_loss}")
 
+    # Evaluate
     dices.append(infer(conf, epoch=e, state=state))
 
+    # Save model checkpoint
     with (Path("ckpts") / f"model-e{e:03d}.pkl").open("wb") as f:
       pickle.dump(
           {
@@ -221,9 +229,9 @@ def main() -> None:
   if conf.train:
     train(conf)
   if conf.infer:
-    infer(conf, 190)
+    infer(conf, conf.epoch - 1)
   if conf.predict:
-    predict_kaggle(conf, 190)
+    predict_kaggle(conf, conf.epoch - 1)
 
 
 if __name__ == "__main__":

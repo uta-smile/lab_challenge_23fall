@@ -18,7 +18,7 @@
 
 A cell segmentation task.
 
-It officially starts at 8pm on Friday (9/15) and ends at 11:59pm on Sunday (9/17) in GMT-5.
+It officially starts from 10/1 and ends at 11:59pm on 12/31 in GMT-5.
 
 * Datasets
 
@@ -69,27 +69,39 @@ The file should contain a header and have the following format:
 You can convert to this format using the following python code:
 
 #+begin_src python
-  def rle(arr: jax.Array) -> str:
+  def rle(arr: np.ndarray) -> str:
     """Run length encoding."""
-    arr1d = arr.flatten()
+    arr1d = np.asarray(arr).flatten()
+    arr1d = np.pad(arr1d, (1, 1), mode="constant", constant_values=0)
+    runs = np.where(arr1d[1:] != arr1d[:-1])[0] + 1
+    runs[1::2] -= runs[::2]
+    return " ".join(map(str, runs))
+#+end_src
 
-    run_length = 0
-    start_pixel = 0
-    rles = []
-    for i, elem in enumerate(arr1d):
-      if elem not in (0, 1):
-        raise ValueError("Only 0 and 1 are supported.")
-      if elem:
-        if run_length == 0:
-          start_pixel = i + 1
-        run_length += 1
-      elif run_length:
-        rles.append(f"{start_pixel} {run_length}")
-        run_length = 0
-    if run_length:
-      rles.append(f"{start_pixel} {run_length}")
-    return " ".join(rles)
+* Code related
 
-  for i, arr in enumerate(arrs):
-    (i, rle(arr))
+The code entry point is ~src/train/train.py~.
+
+** Requirements
+
++ PDM :: https://pdm.fming.dev/latest/
+
+** Install dependencies
+
+#+begin_src sh
+  pdm install
+#+end_src
+
+** Run
+
+To train the model, run
+
+#+begin_src sh
+  XLA_PYTHON_CLIENT_PREALLOCATE=false XLA_FLAGS='--xla_gpu_deterministic_ops=true' CUDA_VISIBLE_DEVICES=0 pdm run "python -m train.train --no-infer --no-predict"
+#+end_src
+
+To inference the model, run
+
+#+begin_src sh
+  XLA_PYTHON_CLIENT_PREALLOCATE=false XLA_FLAGS='--xla_gpu_deterministic_ops=true' CUDA_VISIBLE_DEVICES=0 pdm run "python -m train.train --no-train --no-predict"
 #+end_src

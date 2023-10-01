@@ -35,15 +35,15 @@ license  : GPL-3.0+
 Dataset and Loader.
 """
 
-from collections.abc import Sequence, Iterator
+from collections.abc import Iterator, Sequence
+from dataclasses import dataclass, field
 
-from config import Conf
-from .input import read_images
 import jax
 import jax.numpy as jnp
-from operator import itemgetter
 
-from dataclasses import dataclass, field
+from config import Conf
+
+from .input import read_images
 
 
 @dataclass
