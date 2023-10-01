@@ -34,36 +34,24 @@ license  : GPL-3.0+
 
 Read in images.
 """
-from config import Conf
-from pathlib import Path
-from PIL import Image
 from collections.abc import Sequence
+from functools import partial
+from pathlib import Path
+
 import jax
 import jax.numpy as jnp
 
+from PIL import Image
 
-def read_image(path: Path, gray: bool = False) -> jax.Array:
+
+def read_image(path: Path, binary: bool = False) -> jax.Array:
   """Read image from PATH."""
-  if gray:
-    image = jnp.asarray(Image.open(path).convert("L"))
-    return jnp.where(image > 127, 1, 0).astype("float32")  # noqa: PLR2004
+  if binary:
+    return jnp.asarray(Image.open(path).convert("1"), dtype="float32")
   return jnp.asarray(Image.open(path), dtype="float32")
 
 
-def read_images(path: Path) -> Sequence[tuple[jax.Array, jax.Array]]:
+def read_images(path: Path, binary: bool = False) -> Sequence[jax.Array]:
   """Read images from PATH."""
-  paths = sorted((path / "im").glob("*.png"))
-  return tuple(
-      map(
-          lambda x: (
-              read_image(x),
-              read_image(x.parent.parent / "mask" / x.name, gray=True),
-          ),
-          paths,
-      )
-  )
-
-
-# def read_test(path: Path) -> jax.Array:
-#   """Read test images from PATH."""
-#   return tuple(map(read_image, sorted((path / "test").glob("*.png"))))
+  paths = sorted(path.glob("*.png"))
+  return tuple(map(partial(read_image, binary=binary), paths))

@@ -49,12 +49,27 @@ class Data:
   raw: Path = field(default=Path("./raw"))
   base: Path = field(default=Path("./data"))
 
+@dataclass
+class Params:
+  """Hyper Parameters."""
+
+  lr: float = 1e-4
+  batch_size: int = 2
+
 
 @dataclass
 class Conf:
   """Configuration."""
 
   data: Data = field(default_factory=Data)
+  params: Params = field(default_factory=Params)
+  seed: int = 7
+  epoch: int = 200
+
+  train: bool = True
+  infer: bool = True
+  predict: bool = True
+  have_mask: bool = False
 
   def __post_init__(self) -> None:
     """Post initialize."""

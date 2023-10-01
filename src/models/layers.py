@@ -35,17 +35,16 @@ license  : GPL-3.0+
 Layers
 """
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import field
 
-import haiku as hk
 import jax
 import jax.numpy as jnp
+from flax import linen
 
-PAD_ = str | Sequence[tuple[int, int]] | hk.pad.PadFn | Sequence[hk.pad.PadFn]
+PAD_ = str | int | Sequence[int | tuple[int, int]]
 
 
-@dataclass
-class DoubleConv(hk.Module):
+class DoubleConv(linen.Module):
   """Double Convolution Layer."""
 
   out_channels: int
@@ -56,72 +55,71 @@ class DoubleConv(hk.Module):
   with_bn: bool = True
   bn_config: dict = field(
       default_factory=lambda: {
-          "decay_rate": 0.99,
-          "eps": 1e-4,
-          "create_scale": True,
-          "create_offset": True,
+          "momentum": 0.99,
+          "epsilon": 1e-5,
+          "use_scale": True,
+          "use_bias": True,
       }
   )
 
-  def __call__(self, x: jax.Array, train: bool = True) -> jax.numpy.ndarray:
+  @linen.compact
+  def __call__(self, x: jax.Array, train: bool = False) -> jax.Array:
     """Call."""
-    if self.mid_channel is None:
-      self.mid_channel = self.out_channels
+    mid_channel = self.mid_channel or self.out_channels
 
-    x = hk.Conv2D(  # type: ignore
-        output_channels=self.out_channels,
-        kernel_shape=self.kernel_size,
-        stride=self.stride,
-        padding=self.padding,
-        with_bias=True,
+    x = linen.Conv(
+        mid_channel,
+        (self.kernel_size, self.kernel_size),
+        self.stride,
+        self.padding,
     )(x)
     if self.with_bn:
-      x = hk.BatchNorm(**self.bn_config)(x, is_training=train)  # type: ignore
+      x = linen.BatchNorm(**self.bn_config)(x, use_running_average=not train)
     x = jax.nn.relu(x)
 
-    x = hk.Conv2D(  # type: ignore
-        output_channels=self.out_channels,
-        kernel_shape=self.kernel_size,
-        stride=self.stride,
-        padding=self.padding,
-        with_bias=True,
+    x = linen.Conv(
+        self.out_channels,
+        (self.kernel_size, self.kernel_size),
+        self.stride,
+        self.padding,
     )(x)
     if self.with_bn:
-      x = hk.BatchNorm(**self.bn_config)(x, is_training=train)  # type: ignore
+      x = linen.BatchNorm(**self.bn_config)(x, use_running_average=not train)
     return jax.nn.relu(x)
 
 
-@dataclass
-class Down(hk.Module):
+class Down(linen.Module):
   """Down Sampling Layer."""
 
   out_channels: int
+  dropout: bool = True
 
+  @linen.compact
   def __call__(self, x: jax.Array, train: bool = True) -> jax.numpy.ndarray:
     """Call."""
-    x = hk.max_pool(x, window_shape=2, strides=2, padding="VALID")
-    return DoubleConv(out_channels=self.out_channels)(x, train=train)  # type: ignore
+    x = linen.avg_pool(x, window_shape=(2, 2), strides=(2, 2), padding="VALID")
+    if self.dropout:
+      x = linen.Dropout(rate=0.5)(x, deterministic=not train)
+    return DoubleConv(out_channels=self.out_channels)(x, train=train)
 
 
-@dataclass
-class UpSample(hk.Module):
+class UpSample(linen.Module):
   """Up Sampling Layer."""
 
   out_channels: int
   kernel_size: int = 2
   stride: int = 2
-  padding: str = "SAME"
+  padding: PAD_ = "SAME"
+  dropout: bool = True
 
-  def __call__(
-      self, x1: jax.Array, x2: jax.Array, train: bool = True
-  ) -> jax.numpy.ndarray:
+  @linen.compact
+  def __call__(self, x1: jax.Array, x2: jax.Array, train: bool = True) -> jax.Array:
     """Call."""
-    x1 = hk.Conv2DTranspose(  # type: ignore
-        output_channels=self.out_channels,
-        kernel_shape=self.kernel_size,
-        stride=self.stride,
-        padding=self.padding,
-        with_bias=True,
+    x1 = linen.ConvTranspose(
+        self.out_channels,
+        (self.kernel_size, self.kernel_size),
+        (self.stride, self.stride),
+        self.padding,
     )(x1)
     diff1 = x2.shape[1] - x1.shape[1]
     diff2 = x2.shape[2] - x1.shape[2]
@@ -135,4 +133,6 @@ class UpSample(hk.Module):
         ],
     )
     x = jnp.concatenate([x1, x2], axis=-1)
-    return DoubleConv(out_channels=self.out_channels)(x, train=train)  # type: ignore
+    if self.dropout:
+      x1 = linen.Dropout(rate=0.5)(x1, deterministic=not train)
+    return DoubleConv(out_channels=self.out_channels)(x, train=train)

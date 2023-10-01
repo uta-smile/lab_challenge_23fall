@@ -41,49 +41,116 @@ from config import Conf
 from .input import read_images
 import jax
 import jax.numpy as jnp
-import haiku as hk
 from operator import itemgetter
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Embed:
+  """Embedding."""
+
+  im: Sequence[jax.Array]
+  mask: Sequence[jax.Array]
+
+  def __post_init__(self) -> None:
+    """Post Init."""
+    self.ima = jnp.stack(self.im)
+    self.maska = jnp.stack(self.mask)
+
+  def embed(self, idx: jax.Array) -> tuple[jax.Array, jax.Array]:
+    """Embed."""
+    return self.ima[idx], self.maska[idx]
 
 
 @dataclass
 class Loader:
   """Data Loader."""
 
-  data: Sequence[tuple[jax.Array, jax.Array]]
-  conf: Conf
+  length: int
   batch_size: int = 2
+  rng: jax.Array | int = field(default_factory=lambda: jax.random.key(0))
   shuffle: bool = False
-  rngs: hk.PRNGSequence | None = None
+  droplast: bool = False
+  rebuild: int = 1
+
+  def __post_init__(self) -> None:
+    """Post Init."""
+    self.__rebuild = self.rebuild
+    self.build()
+
+  def build(self) -> None:
+    """Build."""
+    if self.shuffle:
+      if isinstance(self.rng, int):
+        self.rng = jax.random.key(self.rng)
+      self.rng, rng = jax.random.split(self.rng)
+      self.idx = jax.random.permutation(rng, self.length)
+    else:
+      self.idx = jnp.arange(self.length)
+
+    if self.droplast:
+      self.idx = self.idx[: self.length - self.length % self.batch_size]
+    elif self.length % self.batch_size:
+      self.idx = jnp.concatenate(
+          [self.idx, self.idx[: self.batch_size - self.length % self.batch_size]]
+      )
+    self.idx = self.idx.reshape(-1, self.batch_size)
+    self.rebuild = self.__rebuild
+
+  def __iter__(self) -> Iterator[jax.Array]:
+    """Run Loader."""
+    if not self.rebuild:
+      self.build()
+    self.rebuild -= 1
+    yield from self.idx
 
   def __len__(self) -> int:
     """Length."""
-    return len(self.data) // self.batch_size
-
-  def __iter__(self) -> Iterator[tuple[jax.Array, jax.Array]]:
-    """Iterate."""
-    data = self.data
-    if self.shuffle:
-      if self.rngs is None:
-        self.rngs = hk.PRNGSequence(42)
-      rng = next(self.rngs)
-      rarr = jax.random.permutation(rng, jnp.arange(len(self.data)))
-      data = itemgetter(*rarr)(self.data)
-
-    for i in range(len(self)):
-      xs, ys = zip(*data[i * self.batch_size : (i + 1) * self.batch_size], strict=True)
-      yield jnp.stack(xs), jnp.stack(ys)
+    return self.length // self.batch_size
 
 
-def test_loader() -> None:
-  """Test Loader."""
+@dataclass
+class Data:
+  """Data."""
+
+  tr: Loader
+  te: Loader
+  tr_embed: Embed
+  te_embed: Embed
+
+
+def build(conf: Conf, have_mask: bool = False) -> Data:
+  """Build dataset."""
+  tr_im = read_images(conf.data.base / "mnseg" / "im")
+  tr_mask = read_images(conf.data.base / "mnseg" / "mask", binary=True)
+  te_im = read_images(conf.data.base / "mnseg_test" / "im")
+  if have_mask:
+    te_mask = read_images(conf.data.base / "mnseg_test" / "mask", binary=True)
+  else:
+    # we don't have mask, so, regard im as mask to keep the same input as train.
+    te_mask = read_images(conf.data.base / "mnseg_test" / "im", binary=True)
+
+  return Data(
+      Loader(len(tr_im), batch_size=conf.params.batch_size, shuffle=True),
+      Loader(len(te_im), batch_size=1, shuffle=False),
+      Embed(tr_im, tr_mask),
+      Embed(te_im, te_mask),
+  )
+
+
+def test() -> None:
+  """Test data."""
   conf = Conf()
-  data = read_images(conf.data.base / "mnseg")
-  loader = Loader(data, conf)
-  for i, (x, y) in enumerate(loader):
-    print(i, x.shape, y.shape)
+  data = build(conf)
+  print("Train Loader:")
+  for tr in data.tr:
+    print(data.tr_embed.embed(tr)[0].shape)
+    print(data.tr_embed.embed(tr)[1].shape)
+  print("Test Loader:")
+  for te in data.te:
+    print(data.te_embed.embed(te)[0].shape)
 
 
 if __name__ == "__main__":
-  test_loader()
+  test()

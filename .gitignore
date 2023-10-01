@@ -1,5 +1,6 @@
 pdm.lock
 ignore/
+ckpts
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -264,8 +265,8 @@ Temporary Items
 *.icloud
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,linux,emacs
-/chks/
 /data/mnseg_test/mask/
+/data/mnseg_test_old/mask/
 /ltximg/
 /raw/
 /src/raw_utils/

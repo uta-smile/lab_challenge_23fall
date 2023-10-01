@@ -35,30 +35,17 @@ license  : GPL-3.0+
 Utils
 """
 from pathlib import Path
-from tqdm import tqdm
+import numpy as np
 import jax
 
 
-def rle(arr: jax.Array) -> str:
+def rle(arr: jax.typing.ArrayLike) -> str:
   """Run length encoding."""
-  arr1d = arr.flatten()
-
-  run_length = 0
-  start_pixel = 0
-  rles = []
-  for i, elem in enumerate(tqdm(arr1d)):
-    if elem not in (0, 1):
-      raise ValueError("Only 0 and 1 are supported.")
-    if elem:
-      if run_length == 0:
-        start_pixel = i + 1
-      run_length += 1
-    elif run_length:
-      rles.append(f"{start_pixel} {run_length}")
-      run_length = 0
-  if run_length:
-    rles.append(f"{start_pixel} {run_length}")
-  return " ".join(rles)
+  arr1d = np.asarray(arr).flatten()
+  arr1d = np.pad(arr1d, (1, 1), mode="constant", constant_values=0)
+  runs = np.where(arr1d[1:] != arr1d[:-1])[0] + 1
+  runs[1::2] -= runs[::2]
+  return " ".join(map(str, runs))
 
 
 def save(arrs: list[jax.Array], path: Path) -> None:
