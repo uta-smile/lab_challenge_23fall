@@ -167,3 +167,9 @@ max-complexity = 15
 [tool.pyink]
 pyink_indentation = 2
 preview = true
+
+[tool.yapf]
+based_on_style = "yapf"
+column_limit = 88
+allow_multiline_lambdas = true
+split_before_arithmetic_operator = true

@@ -92,10 +92,10 @@ The code entry point is ~src/train/train.py~.
   pdm install
 #+end_src
 
-To use the CUDA version:
+Or to use the CUDA version:
 
 #+begin_src sh
-  pdm install -G cuda
+  pdm install -G ":all"
 #+end_src
 
 ** Run

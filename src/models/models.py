@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 r"""Python ♡ Nasy.
 
     |             *         *
@@ -52,14 +51,12 @@ class UNet(linen.Module):
   stride: int = 1
   padding: str = "SAME"
   with_bn: bool = True
-  bn_config: dict = field(
-      default_factory=lambda: {
-          "momentum": 0.99,
-          "epsilon": 1e-4,
-          "use_scale": True,
-          "use_bias": True,
-      }
-  )
+  bn_config: dict = field(default_factory=lambda: {
+      "momentum": 0.99,
+      "epsilon": 1e-4,
+      "use_scale": True,
+      "use_bias": True,
+  })
 
   @linen.compact
   def __call__(self, x: jax.Array, train: bool = False) -> jax.numpy.ndarray:
@@ -88,7 +85,8 @@ class UNet(linen.Module):
         kernel_size=(self.kernel_size, self.kernel_size),
         strides=self.stride,
         padding=self.padding,
-    )(x)
+    )(
+        x)
 
 
 def test_unet() -> None:
@@ -98,11 +96,9 @@ def test_unet() -> None:
   model = UNet(64)
   variables = model.init(rngs, x, train=False)
   y, mvars = model.apply(
-      variables, x, train=True, rngs={"dropout": rngs}, mutable=["batch_stats"]
-  )
-  jax.tree_util.tree_map_with_path(
-      lambda kp, mv: print(kp, mv.shape), flatten_dict(mvars, sep="/")
-  )
+      variables, x, train=True, rngs={"dropout": rngs}, mutable=["batch_stats"])
+  jax.tree_util.tree_map_with_path(lambda kp, mv: print(kp, mv.shape),
+                                   flatten_dict(mvars, sep="/"))
   assert y.squeeze().shape == (1000, 1000)
   print(model.tabulate(rngs, x, train=True, depth=1))
 

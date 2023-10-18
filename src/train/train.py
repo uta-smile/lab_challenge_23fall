@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 r"""Python ♡ Nasy.
 
     |             *         *
@@ -65,16 +64,21 @@ class TrainState(train_state.TrainState):
 
 
 @partial(jax.jit, static_argnames=("train",))
-def loss_fn(
-    state: TrainState, x: jax.Array, y: jax.Array, rngs: jax.Array, train: bool = True
-) -> TrainState:
+def loss_fn(state: TrainState,
+            x: jax.Array,
+            y: jax.Array,
+            rngs: jax.Array,
+            train: bool = True) -> TrainState:
   """Loss function."""
 
   @partial(jax.value_and_grad, has_aux=True)
   def grad_fn(params: Collection) -> tuple[jax.Array, Collection]:
     """Calculate loss."""
     y_pred, updates = state.apply_fn(
-        {"params": params, "batch_stats": state.batch_stats},
+        {
+            "params": params,
+            "batch_stats": state.batch_stats
+        },
         x,
         train=train,
         rngs={"dropout": rngs},
@@ -123,8 +127,7 @@ def train(conf: Conf) -> None:
           jnp.ones((1, 1000, 1000, 3)),
           train=False,
           depth=1,
-      )
-  )
+      ))
 
   # Init model
   conf.log("Building data and init params...")
@@ -172,20 +175,22 @@ def infer(conf: Conf, epoch: int = 0, state: TrainState | None = None) -> jax.Ar
   if state is None:
     model = UNet(64)
     state = create_train_state(
-        jax.random.key(conf.seed), model, (1000, 1000, 3), asdict(conf.params)
-    )
+        jax.random.key(conf.seed), model, (1000, 1000, 3), asdict(conf.params))
     conf.log(f"Loading epoch {epoch}...")
     with (Path("ckpts") / f"model-e{epoch:03d}.pkl").open("rb") as f:
       pstate = pickle.load(f)  # noqa: S301
       state = state.replace(**pstate)
 
-  data = build(conf, have_mask=True)
+  data = build(conf, have_mask=conf.have_mask)
   dices = []
   for tei in tqdm(data.te):
     im, mask = data.te_embed.embed(tei)
-    pred = state.apply_fn(
-        {"params": state.params, "batch_stats": state.batch_stats}, im, train=False
-    ).squeeze()
+    pred = state.apply_fn({
+        "params": state.params,
+        "batch_stats": state.batch_stats
+    },
+                          im,
+                          train=False).squeeze()
     pred = jnp.where(jax.nn.sigmoid(pred) > 0.5, 1, 0)  # noqa: PLR2004
     dice = jnp.sum(pred * mask) * 2.0 / (jnp.sum(pred) + jnp.sum(mask))
     dices.append(dice)
@@ -200,8 +205,7 @@ def predict_kaggle(conf: Conf, epoch: int = 0, state: TrainState | None = None) 
   if not state:
     model = UNet(64)
     state = create_train_state(
-        jax.random.key(conf.seed), model, (1000, 1000, 3), asdict(conf.params)
-    )
+        jax.random.key(conf.seed), model, (1000, 1000, 3), asdict(conf.params))
     with (Path("ckpts") / f"model-e{epoch:03d}.pkl").open("rb") as f:
       pstate = pickle.load(f)  # noqa: S301
       state = state.replace(**pstate)
@@ -210,9 +214,12 @@ def predict_kaggle(conf: Conf, epoch: int = 0, state: TrainState | None = None) 
   masks = []
   for tei in tqdm(data.te):
     im, mask = data.te_embed.embed(tei)
-    pred = state.apply_fn(
-        {"params": state.params, "batch_stats": state.batch_stats}, im, train=False
-    ).squeeze()
+    pred = state.apply_fn({
+        "params": state.params,
+        "batch_stats": state.batch_stats
+    },
+                          im,
+                          train=False).squeeze()
     pred = jnp.where(jax.nn.sigmoid(pred) > 0.5, 1, 0)  # noqa: PLR2004
     preds.append(pred)
     masks.append(mask)

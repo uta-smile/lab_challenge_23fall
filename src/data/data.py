@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 r"""Python ♡ Nasy.
 
     |             *         *
@@ -90,11 +89,10 @@ class Loader:
       self.idx = jnp.arange(self.length)
 
     if self.droplast:
-      self.idx = self.idx[: self.length - self.length % self.batch_size]
+      self.idx = self.idx[:self.length - self.length % self.batch_size]
     elif self.length % self.batch_size:
       self.idx = jnp.concatenate(
-          [self.idx, self.idx[: self.batch_size - self.length % self.batch_size]]
-      )
+          [self.idx, self.idx[:self.batch_size - self.length % self.batch_size]])
     self.idx = self.idx.reshape(-1, self.batch_size)
     self.rebuild = self.__rebuild
 

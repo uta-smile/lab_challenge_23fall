@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 r"""Python ♡ Nasy.
 
     |             *         *
@@ -53,14 +52,12 @@ class DoubleConv(linen.Module):
   stride: int = 1
   padding: PAD_ = "SAME"
   with_bn: bool = True
-  bn_config: dict = field(
-      default_factory=lambda: {
-          "momentum": 0.99,
-          "epsilon": 1e-5,
-          "use_scale": True,
-          "use_bias": True,
-      }
-  )
+  bn_config: dict = field(default_factory=lambda: {
+      "momentum": 0.99,
+      "epsilon": 1e-5,
+      "use_scale": True,
+      "use_bias": True,
+  })
 
   @linen.compact
   def __call__(self, x: jax.Array, train: bool = False) -> jax.Array:
@@ -72,7 +69,8 @@ class DoubleConv(linen.Module):
         (self.kernel_size, self.kernel_size),
         self.stride,
         self.padding,
-    )(x)
+    )(
+        x)
     if self.with_bn:
       x = linen.BatchNorm(**self.bn_config)(x, use_running_average=not train)
     x = jax.nn.relu(x)
@@ -82,7 +80,8 @@ class DoubleConv(linen.Module):
         (self.kernel_size, self.kernel_size),
         self.stride,
         self.padding,
-    )(x)
+    )(
+        x)
     if self.with_bn:
       x = linen.BatchNorm(**self.bn_config)(x, use_running_average=not train)
     return jax.nn.relu(x)
@@ -120,7 +119,8 @@ class UpSample(linen.Module):
         (self.kernel_size, self.kernel_size),
         (self.stride, self.stride),
         self.padding,
-    )(x1)
+    )(
+        x1)
     diff1 = x2.shape[1] - x1.shape[1]
     diff2 = x2.shape[2] - x1.shape[2]
     x1 = jnp.pad(
