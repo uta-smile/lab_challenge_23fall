@@ -103,11 +103,11 @@ To use the CUDA version:
 To train the model, run
 
 #+begin_src sh
-  XLA_PYTHON_CLIENT_PREALLOCATE=false XLA_FLAGS='--xla_gpu_deterministic_ops=true' CUDA_VISIBLE_DEVICES=0 pdm run "python -m train.train --no-infer --no-predict"
+  XLA_PYTHON_CLIENT_PREALLOCATE=false XLA_FLAGS='--xla_gpu_deterministic_ops=true' CUDA_VISIBLE_DEVICES=0 pdm run python -m train.train --no-infer --no-predict
 #+end_src
 
 To inference the model, run
 
 #+begin_src sh
-  XLA_PYTHON_CLIENT_PREALLOCATE=false XLA_FLAGS='--xla_gpu_deterministic_ops=true' CUDA_VISIBLE_DEVICES=0 pdm run "python -m train.train --no-train --no-predict"
+  XLA_PYTHON_CLIENT_PREALLOCATE=false XLA_FLAGS='--xla_gpu_deterministic_ops=true' CUDA_VISIBLE_DEVICES=0 pdm run python -m train.train --no-train --no-predict
 #+end_src

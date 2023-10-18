@@ -31,6 +31,7 @@ license = {text = "MIT"}
 cuda = [
     "jax[cuda12_pip]>=0.4.18",
     "jaxlib[cuda12_pip]>=0.4.18",
+    "nvidia-cudnn-cu12==8.9.4.25",
 ]
 
 [build-system]
